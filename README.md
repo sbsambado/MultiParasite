@@ -1,5 +1,6 @@
 # MultiParasite
-Title: Macro-parasites are amplified by host type while micro-parasites are diluted by host diversity (working title)
+
+<b>Title</b>: Macro-parasites are amplified by host type while micro-parasites are diluted by host diversity (working title)
 
 <b>Authors</b>: Jordan Salomon, Arielle Crews, Samantha B Sambado, Suhkman Sidu, Andrea Swei
 
