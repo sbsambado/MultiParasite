@@ -1,0 +1,216 @@
+---
+title: "2_data_analysis"
+author: "sbsambado"
+date: "5/23/2022"
+output: html_document
+---
+
+# Multiparasite paper
+
+## Title: Macroparasites are amplified by host diversity while microparasites are diluted by host diversity
+
+### Authors: Jordan Salomon, Arielle Crews, Samantha B Sambado, Suhkman Sidu, Andrea Swei
+
+#### Terminology
+
+**Macro-parasites** : Ticks & helminths
+
+**Micro-parasites**: Borrelia spp includes: BB = Borrelia burgdorferi sensu stricto, BBSL = Borrelia bissetti, BM = Borrelia miyamotoi, BARF = Bay Area Relapsing Fever)
+
+
+**This is for significant regression models only in Table X and X**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_chunk$set(message = FALSE)
+
+# needed packages
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(reshape2)
+library(MASS)
+library(lme4)
+library(kableExtra)
+library(psych)
+library(effects)
+library(jtools)
+library(forcats)
+```
+
+### Part 1: Characterize the distribution of macro- and micro- parasites across individual hosts. 
+
+
+###### Rodent tick burden (negative binomial model) with site as random effect
+```{r}
+## build models
+mod_1_tic <- glmer.nb(tic_load  ~ genera + sex + age + (1|site),
+                    data = data_partial)
+
+
+## model summary
+summary(mod_1_tic)
+
+
+## model diagnostics
+# determine if model is significant without genera
+mod_1_tic2 <- update(mod_1_tic,.~. - genera)
+anova(mod_1_tic, mod_tic2) # genera is a significant predictor p = 6.799e-13 ***
+
+
+### model visualization
+plot(predictorEffects(mod_1_tic))
+
+
+```
+
+###### Rodent helminth burden (negative binomial model) with site as random effect
+```{r}
+## build model
+mod_1_hel <- glmer.nb(hel_load ~ genera + sex + age + (1|site),
+                    data = data_partial) 
+
+### model summary
+summary(mod_1_hel)
+
+
+## model diagnostics
+# determine if model is significant without genera
+mod_1_hel2 <- update(mod_1_hel,.~. - genera)
+anova(mod_hel, mod_hel2) # genera is a significant predictor  p = 9.699e-08 ***
+
+
+### model visualization
+plot(predictorEffects(mod_1_hel))
+
+
+### compare model coefficients
+mod_1_coefficients_plot <- plot_summs(mod_1_hel, mod_1_tic,
+           model.names = c("Helminth" , "Tick"),
+           #plot.distributions = TRUE,
+           #scale = TRUE,
+           inner_ci_level = .8,
+           coefs = c("Genera - Peromyscus" = "generaPERO",
+                     "Sex - Male" = "sexM",
+                     "Age - Juvenile" = "ageJ")
+           )
+
+```
+
+###### Rodent B. burgdorferi sensu lato infection (binomial model) 
+
+```{r}
+## select for that data
+data_select_bbsl <- data_select %>%
+  filter(overall_infection == "BB" | overall_infection == "BBSL" |overall_infection == "Negative")
+
+
+## build model 
+mod_1_logit_bbsl <- glm(path_presence ~ genera + sex + age, 
+                         family = "binomial", data = data_select_bbsl)
+
+
+## model summary
+summary(mod_1_logit_bbsl)
+
+
+### model visualization
+plot(predictorEffects(mod_1_logit_bbsl))
+
+
+```
+
+### Part 2: Understand how macro-parasites are influenced by host community dynamics
+
+###### Tick burden (negative binomial model) with genera as random effect
+```{r}
+## build model
+mod_2_tic_community <- glmer.nb(tic_load ~ site_rod_shan + site_pred_shan + (1|genera),
+                data = data_partial)
+
+
+## model summary
+summary(mod_2_tic_community)
+
+
+## visualize model
+plot_summs(mod_2_tic_community,
+           inner_ci_level = .8,
+           coefs = c("Site Rodent Shannon Diversity" = "site_rod_shan",
+                     "Site Predator Shannon Diversity" = "site_pred_shan")
+)
+
+
+```
+
+###### Tick burden (negative binomial model) with genera as random effect for mean temperature (C)
+
+```{r}
+## select data
+climate_macro <- data_complete_prism %>%
+  group_by(site,data_type) %>%
+  dplyr::select(site, genera, tic_load, hel_load, data)
+
+
+## filter mean temperature
+tmean_macro <- climate_macro %>%
+  filter(data_type == "tmean")
+
+## build model
+mod_2_tic_tmean <- glmer.nb(tic_load ~ data + (1|genera), data = tmean_macro)
+
+
+# model summary 
+summary(mod_2_tic_tmean)
+
+
+```
+
+###### Tick burden (negative binomial model) with genera as random effect for max vapor pressure deficit
+
+```{r}
+## select data
+climate_macro <- data_complete_prism %>%
+  group_by(site,data_type) %>%
+  dplyr::select(site, genera, tic_load, hel_load, data)
+
+
+## filter vpdmax
+vpdmax_macro <- climate_macro %>%
+  filter(data_type == "vpdmax")
+
+
+## build model
+mod_2_tic_vpdmax <- glmer.nb(tic_load ~ data + (1|genera), data = vpdmax_macro) # significant (estimate = 0.11075   sd =   0.04899  z-score =   2.261   p-value = 0.0238)
+
+## model summary
+summary(mod_2_tic_vpdmax)
+
+
+```
+
+###### Pathogen presence (binomial model) for N. fuscipes only
+
+```{r}
+## select data
+ nefu_all <- data_select %>%
+  filter(genera == "NEFU") 
+
+
+## build model
+mod_2_logit_nefu_all <- glm(path_presence ~ site_rod_shan + site_pred_shan,
+                data = nefu_all, 
+                family = "binomial")
+
+
+## model summary
+summary(mod_2_logit_nefu_all)
+
+
+```
+
+### Part 3: Analyze how macro-parasites might influence micro-parasite infection within individual hosts
+
+There were no significant models for these analyses on this data set.

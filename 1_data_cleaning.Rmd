@@ -1,0 +1,259 @@
+---
+title: "1_data_cleaning"
+author: "sbsambado"
+date: "5/23/2022"
+output: html_document
+---
+
+# Multiparasite paper
+
+## Title: Macroparasites are amplified by host diversity while microparasites are diluted by host diversity
+
+### Authors: Jordan Salomon, Arielle Crews, Samantha B Sambado, Suhkman Sidu, Andrea Swei
+
+#### Terminology
+
+**Macro-parasites** : Ticks & helminths
+
+**Micro-parasites**: Borrelia spp includes: BB = Borrelia burgdorferi sensu stricto, BBSL = Borrelia bissetti, BM = Borrelia miyamotoi, BARF = Bay Area Relapsing Fever)
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+
+# needed packages
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(reshape2)
+library(MASS)
+library(lme4)
+library(kableExtra)
+library(psych)
+library(effects)
+library(jtools)
+library(forcats)
+
+```
+
+
+**Data set 1**: `data` is the full data set from Swei database with 47 columns of data that is then subsetted to `data_subset` with just the variables needed for our analyses
+
+```{r}
+
+# read in data from Swei master data base (given to me by J. Salomon, need to check when this was accessed)
+data <- read_csv("multiparasite.csv") # check out update Swei master list for NAs on tissue5S testing
+
+# structure of data
+dim(data) # 313 x 47
+str(data) 
+
+# clean up column names
+names(data) <- tolower(names(data))
+
+# check to make sure we're doing analyses on the sites we want
+unique(data$site)
+
+# select the columns wanted for these analyses
+data_subset <- data[, -c(3,8,19,21, 23:38, 45:47)]   #c(1:7, 12:18, 21,22, 39, 40:44)]
+str(data_subset)
+
+# give column names that are easier to manipulate
+names(data_subset)[2] <- "id"
+names(data_subset)[5] <- "mass_log"
+names(data_subset)[7] <- "taken_blood"
+names(data_subset)[8] <- "tested_tissue5s"
+names(data_subset)[9] <- "tested_tissue16s"
+names(data_subset)[10] <- "path_presence" # bb or bm 
+names(data_subset)[11] <- "hel_presence"
+names(data_subset)[12] <- "hel_load"
+names(data_subset)[13] <- "hel_rich"
+names(data_subset)[14] <- "tic_presence"
+names(data_subset)[15] <- "tic_load"
+names(data_subset)[16] <- "tic_rich"
+names(data_subset)[17] <- "path_rich" # bb or bm but double check
+names(data_subset)[18] <- "macro_load"
+names(data_subset)[19] <- "site_area_log"
+names(data_subset)[20] <- "site_path_rich"
+names(data_subset)[21] <- "site_vert_rich"
+names(data_subset)[22] <- "site_rod_shan"
+names(data_subset)[23] <- "site_pred_shan"
+names(data_subset)[24] <- "site_qil_18"
+
+# change to right data structures
+data_subset$site <- as.factor(data_subset$site)
+data_subset$genera <- as.factor(data_subset$genera)
+data_subset$sex <- as.factor(data_subset$sex)
+data_subset$age <- as.factor(data_subset$age)
+data_subset$path_presence <- as.numeric(data_subset$path_presence)
+data_subset$hel_presence <- as.numeric(data_subset$hel_presence)
+data_subset$tic_presence <- as.numeric(data_subset$tic_presence)
+data_subset$path_presence <- as.numeric(data_subset$path_presence)
+
+
+# create log of counts
+data_subset$hel_load_log <- log(data_subset$hel_load + 1)
+data_subset$tic_load_log <- log(data_subset$tic_load + 1)
+
+# check the transformation worked
+str(data_subset) # 313 x 26
+
+
+# write to a csv for future analyses
+write.csv(data_subset, "data/data_subset.csv", row.names = FALSE)
+```
+
+**Data set 2**: `data_partial` is the subset of data that has just *N. fuscipes* woodrats (ie NEFU) and *Peromyscus spp.* mice (ie PERO). This dataset will be used for our analyses due to the consistent sampling of those genera. 
+
+```{r}
+
+# only going to select NEFU and PERO
+
+data_partial <- data_subset[which(data_subset$genera == "NEFU" | data_subset$genera == "PERO"),]
+
+# check that worked
+unique(data_subset$genera)
+
+str(data_partial) #304 x 26
+
+# write to a csv for future analyses
+write.csv(data_partial, "data/data_partial.csv", row.names = FALSE)
+```
+
+**Data set 3**: `prism_full` comes from a script I generated to scrape data from PRISM (NEED TO UPLOAD THIS) that will be merged into `data_complete_prism` that has all Swei data plus PRISM data
+
+```{r}
+# upload PRISM data
+prism_full <- read.csv("data/PRISM_FULL_sites.csv")
+
+# merge PRISM with Swei data
+
+data_complete_prism <- merge(data_partial, prism_full, by = "site")
+
+# write to a csv for future analyses
+write.csv(data_complete_prism , "data/data_complete_prism.csv", row.names = FALSE)
+```
+
+
+**Data set 4**: `data_select` comes with the most recent pathogen data available on the Swei database that is then merged with `data_complete_prism`.
+
+```{r}
+master <- read.csv("2018_Master_Field_Data_pulled20220501.csv")
+
+# select the stuff we want
+master_subset <- master[, c(3,7, 8, 94)] 
+
+#names(master_subset)[1] <- "site"
+names(master_subset)[1] <- "date"
+names(master_subset)[2] <- "id"
+names(master_subset)[3] <- "species"
+names(master_subset)[4] <- "overall_infection"
+
+# checknames of infection
+unique(master_subset$overall_infection)
+
+
+# correct names
+master_subset$overall_infection <- recode_factor(master_subset$overall_infection,
+                                                 Neg = "Negative",
+                                                 "Borrelia sp. (Lake Gaillard)" = "BARF",
+                                                 "Borrelia sp. (novel relapsing fever)" = "BARF",
+                                                 "MISSING" = "NA",
+                                                 "Blood negative; ear punch needs to be extracted and tested" = "NA",
+                                                 "0" = "NA",
+                                                 "Bbsl (redo?)" = "BBSL",
+                                                 "B. bissetti" = "BBSL",
+                                                 "B. burgdorferi s.l. (not sequence confirmed, but strong PCR band)" = "BBSL",
+                                                 "Neg? " = "Negative",
+                                                 "<NA>" = "NA",
+                                                 " " = "NA",
+                                                 "missing" = "NA",
+                                                 "B.burgdorferi, Borrelia sp. (Lake Gaillard)" = "CO:BBSS:BARF",
+                                                 "B. miyamotoi, Borrelia sp. (novel relapsing fever)" = "CO:BM:BARF",
+                                                 "B. burgdorferi, Borrelia sp. (novel relapsing fever)" = "CO:BBSS:BARF",
+                                                 "B. burgdorferi" = "BB",
+                                                 "B. miyamotoi" = "BM",
+                                                 "B. burgdorferi " = "BB")
+
+# check to make sure that worked
+unique(master_subset$overall_infection)
+
+# change nefu species
+master_subset$species <- recode_factor(master_subset$species,
+                                       "NEFU " = "NEFU")
+
+# let's eliminate the rest
+master_partial <- master_subset[which(master_subset$overall_infection == "BB" | 
+                                        master_subset$overall_infection == "BM" |
+                                        master_subset$overall_infection == "BBSL" |
+                                        master_subset$overall_infection == "BARF" |
+                                        master_subset$overall_infection == "CO:BBSS:BARF" |
+                                        master_subset$overall_infection == "CO:BM:BARF" |
+                                        master_subset$overall_infection == "Negative" |
+                                        master_subset$overall_infection == "NA"),]
+
+# check if that worked
+str(master_partial) # 396 x 5
+
+unique(master_partial$overall_infection)
+
+# lets omit some columns to make it easier
+unique(master_subset$species)
+
+         
+# now match it up with data frame by id
+data_complete <- merge(data_partial, master_partial, by = "id") #260 x 29
+
+
+# reorder the factor (for visualization purposes later)
+data_complete$overall_infection <- fct_rev(data_complete$overall_infection)
+
+# make the dataset without BARF
+data_select <- data_complete[which(data_complete$overall_infection == "BB" | 
+                                        data_complete$overall_infection == "BM" |
+                                        data_complete$overall_infection == "BBSL" |
+                                     data_complete$overall_infection == "Negative"),]
+
+# check if that worked
+unique(data_select$overall_infection)
+
+# write to a csv for future analyses
+write.csv(data_select, "data/data_select.csv", row.names = FALSE)
+
+write.csv(data_complete, "data/data_complete.csv", row.names = FALSE)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

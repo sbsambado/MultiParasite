@@ -1,0 +1,163 @@
+---
+title: "3_data_figures"
+author: "sbsambado"
+date: "5/23/2022"
+output: html_document
+---
+
+# Multiparasite paper
+
+## Title: Macroparasites are amplified by host diversity while microparasites are diluted by host diversity
+
+### Authors: Jordan Salomon, Arielle Crews, Samantha B Sambado, Suhkman Sidu, Andrea Swei
+
+#### Terminology
+
+**Macro-parasites** : Ticks & helminths
+
+**Micro-parasites**: Borrelia spp includes: BB = Borrelia burgdorferi sensu stricto, BBSL = Borrelia bissetti, BM = Borrelia miyamotoi, BARF = Bay Area Relapsing Fever)
+
+
+**This is for significant regression models only in Table X and X**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_chunk$set(message = FALSE)
+
+# needed packages
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(kableExtra)
+library(psych)
+library(effects)
+library(jtools)
+library(stringr)
+library(ggsci)
+library(gridExtra)
+```
+
+## Main Text
+
+### Figure 1
+A boxplot of the mean macro-parasite burden across N.fuscipes and Peromyscus spp. The log of helminth (left panel) and tick (right panel) counts on individual rodents were used for visualization purposes. 
+
+```{r}
+to_string <- as_labeller(c(`hel_load` = "Helminth burden", `tic_load` = "Tick burden"))
+
+# comparing means of ticks and helminths
+
+ggplot(data_partial_long, aes(x = genera, y = log(value + 1), fill = genera )) +
+  stat_boxplot() +
+  facet_wrap(~ macro_type,labeller = to_string) +
+    scale_fill_jco(alpha = .95) +
+  theme_classic() +
+  scale_x_discrete(labels = c("N. fuscipes", "Peromyscus spp.")) +
+  labs(x = "", y = "log of macro-burden count") +
+  theme(axis.title = element_text(face = "bold"),
+        axis.text.x = element_text(face = "bold"),
+        strip.background = element_rect(fill = "gray95"),
+        strip.text = element_text(size=12, face = 'bold')) +
+  guides(fill = FALSE)
+#ggsave("figures/MeanMacroBurdens.jpeg", width = 5, height = 5, dpi = 320)
+```
+
+
+### Figure 2
+A histogram of the counts of individual rodents that were uninfected or infected with B. burgdorferi with certain macro-parasite infections. The types of infection were: no tick or helminth burden on an individual rodent (No Macro), helminth burden only (Helminth Only), tick burden only (Tick Only), or both ticks and helminths were found on individual rodent (Tick & Helminth ). The colors denote for N.fuscipes (blue) and Peromyscus spp. (yellow).
+
+```{r}
+data_complete$type <- str_c(data_complete$path_presence, "-", data_complete$tic_presence, "-",data_complete$hel_presence)
+
+data_complete$type_macro <- str_c(data_complete$tic_presence, "-",data_complete$hel_presence)
+
+to_string <- as_labeller(c(`0` = "Borrelia absent", `1` = "Borrelia present"))
+
+data_complete %>%
+  group_by(genera, type_macro, path_presence) %>%
+  filter(type != "NA") %>%
+  count() %>%
+ggplot(aes(x = type_macro, y = n, fill = genera)) +
+  geom_histogram(stat = "identity") +
+  facet_wrap(~path_presence,
+             labeller = to_string) +
+  theme_classic() + 
+  labs(y = "Individual Rodent Count", x = "", fill = "Genera")+
+    theme(strip.background = element_rect(fill = "gray95"),
+        strip.text = element_text(size=12, face = 'bold'),
+        axis.title = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(angle = 0, vjust = .6, face = "bold"),
+        legend.position = "bottom") +
+  scale_x_discrete(labels = c("0-0" = "No Macro",
+                              "0-1" = "Helminth Only",
+                              "1-1" = "Tick & Helminth",
+                              "1-0" = "Tick Only")) +
+    scale_fill_jco(name = "Genera", labels = c("N. fuscipes", "Peromyscus spp.")) 
+#ggsave("figures/TypesOfInfection.jpeg", width = 10, height = 5, dpi = 320)
+```
+
+## Supplement
+
+
+### Supplemental Figure 2. 
+A boxplot of mean macro-parasite burden across all sampled rodent species. Fecal samples from R. megalotis were not collected so R. megalotis was not assess for helminth burdens.  The log of tick (top panel) and helminth (bottom panel) counts on individual rodents were used for visualization purposes.
+
+```{r}
+to_string <- as_labeller(c(`hel_load` = "Helminth burden", `tic_load` = "Tick burden"))
+
+# comparing means of ticks and helminths
+
+p1 <- ggplot(data_subset, aes(x = genera, y = tic_load_log, fill = genera )) +
+  stat_boxplot() +
+    scale_fill_jco() +
+  scale_x_discrete(labels = c("M. californicus", "N. fuscipes", "Peromyscus spp.", "R. megalotis")) +
+  theme_classic() +
+  labs(x = "", y = "log of tick counts") +
+  theme(axis.title = element_text(face = "bold"),
+        strip.background = element_rect(fill = "gray95"),
+        strip.text = element_text(size=12, face = 'bold'),
+        axis.text.x = element_text(face = "bold")) +
+ guides(fill = FALSE)
+
+
+
+p2 <- ggplot(data_subset, aes(x = genera, y = hel_load_log, fill = genera )) +
+  stat_boxplot() +
+  #facet_wrap(~ ge) +#,labeller = to_string) +
+    scale_fill_jco() +
+  scale_x_discrete(labels = c("M. californicus", "N. fuscipes", "Peromyscus spp.", "R. megalotis")) +
+  theme_classic() +
+  labs(x = "", y = "log of helminth counts") +
+  theme(axis.title = element_text(face = "bold"),
+        strip.background = element_rect(fill = "gray95"),
+        strip.text = element_text(size=12, face = 'bold'),
+        axis.text.x = element_text(face = "bold")) +
+ guides(fill = FALSE)
+
+p <- grid.arrange(p1, p2)
+
+#ggsave(plot = p, filename =  "figures/MeanMacroBurdensAllSpecies.jpeg", width = 10, height = 5, dpi = 320)
+```
+
+
+### Supplemental Figure 3. 
+Climate characteristics of each site arranged latitudinally (SLRP is the most northern to WP the most southern) for April 2018. April was selected because peak sampling of all ten sites occurred throughout the month of April. We chose to select the average of one month because ticks are more sensitive to shifts in monthly climate characteristics than yearly averages and their peak activity season (i.e. phenology) occurs between April and May. Climate data came from the Oregon State Parameter-elevation Regreesion on Independent Slopes Model (PRISM) Climate Group (downloaded on 2022-05-01) that provide estimates of primary climate elements such as mean temperature (tmean, C), precipitation (ppt,  mm), and maximum vapor pressure deficit (vpdmax, kPA) (CITE). Tmean is derive as the average of max temperature and minium temperature that is average over all days in the month. Ppt is the monthly total precipitation. Vpdmax is daily maximum vapor pressure deficit averaged over all days in the month. Vapor pressure deficit (vpd) is the actual difference (in units of pressure) between Actual Vapor Pressure and the Saturation Vapor Pressure (e.g. the amount of moisture in the air and how much moisture in the air can hold when it’s saturated). Max vpd has been shown to be a significant predictor of tick counts and questing activity, which is why it is incorporated in this analyses. Single point climates estimates were taken at a 4 km resolution come from given GPS plots of site locations from Salomon 2021 (CITE).
+
+```{r}
+to_string <- as_labeller(c(`ppt` = "Precipitation (mm)", `tmean` = "Mean Temperature (C)", vpdmax = "Max VPD (kPA)"))
+
+ggplot(data_complete_prism, aes(x = site, y = data)) +
+  geom_point() +
+  facet_wrap(~data_type, scale = "free_y", labeller = to_string) +
+  theme_bw() +
+  theme(axis.title = element_text(face = "bold"),
+        strip.background = element_rect(fill = "gray95"),
+        strip.text = element_text(size=10, face = 'bold'),
+        axis.text.x = element_text(angle = 90)) +
+  labs(x = "Site", y = "Climate Data from April 2018")
+#ggsave("figures/ClimateDataAprilSites.jpeg", height = 5, width = 10, dpi = 320)
+  
+```
+
