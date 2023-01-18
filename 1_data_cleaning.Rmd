@@ -7,9 +7,9 @@ output: html_document
 
 # Multiparasite paper
 
-## Title: Macroparasites are amplified by host diversity while microparasites are diluted by host diversity
+## Title: Macro-parasites and micro-parasites co-exist in wildlife communities but are influencd by different community-level parameters
 
-### Authors: Jordan Salomon, Arielle Crews, Samantha B Sambado, Suhkman Sidu, Andrea Swei
+### Authors: Jordan Salomon, Samantha B Sambado, Arielle Crews, Suhkman Sidu, Eric Seredian, Adrienne Almarinez, Rachel Grgich, and Andrea Swei
 
 #### Terminology
 
