@@ -7,15 +7,17 @@ output: html_document
 
 # Multiparasite paper
 
-## Title: Macroparasites are amplified by host diversity while microparasites are diluted by host diversity
+## Title: Macro-parasites and micro-parasites co-exist in wildlife communities but are influencd by different community-level parameters
 
-### Authors: Jordan Salomon, Arielle Crews, Samantha B Sambado, Suhkman Sidu, Andrea Swei
+### Authors: Jordan Salomon, Samantha B Sambado, Arielle Crews, Suhkman Sidu, Eric Seredian, Adrienne Almarinez, Rachel Grgich, and Andrea Swei
 
 #### Terminology
 
 **Macro-parasites** : Ticks & helminths
 
 **Micro-parasites**: Borrelia spp includes: BB = Borrelia burgdorferi sensu stricto, BBSL = Borrelia bissetti, BM = Borrelia miyamotoi, BARF = Bay Area Relapsing Fever)
+
+### Summary statistics
 
 
 **This is for significant regression models only in Table X and X**
@@ -39,6 +41,57 @@ library(effects)
 library(jtools)
 library(forcats)
 ```
+
+
+### Summary statistics
+
+wilcoxon rank sum test
+```{r}
+
+## burden intensity for all rodents
+wilcox.test(data_partial$tic_load ~ data_partial$genera) # W = 12806, p-value = 2.033e-05
+
+wilcox.test(data_partial$hel_load ~ data_partial$genera) # W = 1984.5, p-value = 1.598e-06
+
+
+## burden intensity for infected and unifected NEFU
+
+nefu <- data_partial %>%
+  filter(genera == "NEFU")
+
+
+wilcox.test(nefu$tic_load ~ nefu$path_presence) # W = 596, p-value = 0.2878
+
+wilcox.test(nefu$hel_load ~ nefu$path_presence) # W = 249, p-value = 0.9905
+
+
+wilcox.test(tic_load ~ path_presence , data = data_partial) # W = 5263, p-value = 0.03019
+
+wilcox.test(hel_load ~ path_presence, data = data_partial) # W = 1515, p-value = 0.0406
+
+
+# calculate mean tick & helminth load for all rodents
+
+mean(data_partial$tic_load[data_partial$path_presence == 0], na.rm = TRUE) # 1.636735
+mean(data_partial$tic_load[data_partial$path_presence == 1], na.rm = TRUE) # 2.403846
+## for all rodents, the mean tick load was higher in infected (2.4) than non-infected (1.6)
+
+mean(data_partial$hel_load[data_partial$path_presence == 0], na.rm = TRUE) # 4.648148
+mean(data_partial$hel_load[data_partial$path_presence == 1], na.rm = TRUE) # 1.489362
+## for all rodents, the mean helminth load was higher in non-infected (4.6) than infected
+
+# calculate mean tick & helminth load for NEFU
+mean(nefu$tic_load[nefu$path_presence == 0], na.rm = TRUE) # 3.783784
+mean(nefu$tic_load[nefu$path_presence == 1], na.rm = TRUE) # 4.894737
+## for NEFUs, the mean tick load was higher in infected (4.9) than non-infected (3.8)
+
+mean(nefu$hel_load[nefu$path_presence == 0], na.rm = TRUE) # 7.774194
+mean(nefu$hel_load[nefu$path_presence == 1], na.rm = TRUE) # 4.1875
+## for NEFUs, the mean helminth load was higher in non-infected (7.8) than infected (4.2)
+
+```
+
+
 
 ### Part 1: Characterize the distribution of macro- and micro- parasites across individual hosts. 
 
